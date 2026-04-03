@@ -32,6 +32,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer, CrossEncoder
+from dotenv import load_dotenv
+load_dotenv()
 
 logger = logging.getLogger("app.api.v1.endpoints.llm")
 
@@ -65,7 +67,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://127.0.0.1:11434")
 
 # API keys (used when LLM_PROVIDER != ollama)
-GEMINI_API_KEY    = os.getenv("GEMINI_API_KEY",    "AIzaSyCu3KHEhJayXAa9Fp0teYubBnb8cN8EIlo")
+GEMINI_API_KEY    = os.getenv("GEMINI_API_KEY",    "")
 OPENAI_API_KEY    = os.getenv("OPENAI_API_KEY",    "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
