@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ notification.title }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+<div class="bg-white rounded-xl shadow-sm p-6">
+<div class="flex items-start justify-between mb-4">
+<div class="flex-1">
+<h1 class="text-2xl font-bold text-gray-900 mb-2">{{ notification.title }}</h1>
+<div class="flex items-center gap-4 text-sm text-gray-600">
+<span>{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+<span class="px-2 py-1 rounded-full text-xs {% if notification.priority.value == 'urgent' %}bg-red-100 text-red-700{% else %}bg-gray-100 text-gray-700{% endif %}">
+{{ notification.priority.value }}</span></div></div>
+{% if not notification.is_read %}
+<button onclick="markAsRead()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">تحديد كمقروء</button>
+{% endif %}</div>
+<div class="prose max-w-none">
+<p class="text-gray-700 leading-relaxed">{{ notification.message }}</p></div>
+{% if notification.action_url %}
+<div class="pt-4 border-t"><a href="{{ notification.action_url }}" class="text-blue-600 hover:text-blue-700">عرض التفاصيل →</a></div>
+{% endif %}</div>
+<a href="/notifications" class="text-gray-600 hover:text-gray-900">← العودة للإشعارات</a></div>
+<script>
+function markAsRead() {
+fetch('/api/v1/notifications/{{ notification.id }}/read', {
+method: 'POST', headers: {'Authorization': 'Bearer ' + localStorage.getItem('access_token')}
+}).then(() => location.reload());
+}
+</script>
+{% endblock %}

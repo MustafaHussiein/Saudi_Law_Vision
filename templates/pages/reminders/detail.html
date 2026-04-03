@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}تفاصيل التذكير - Riada Law{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-sm text-gray-600">
+        <a href="/dashboard" class="hover:text-blue-600">لوحة التحكم</a>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        <a href="/reminders" class="hover:text-blue-600">التذاكر</a>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        <span class="text-gray-900">التفاصيل</span>
+    </nav>
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-sm p-6">
+        <div class="flex items-start justify-between mb-4">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <h1 class="text-2xl font-bold text-gray-900">{{ reminder.title or reminder.title_ar }}</h1>
+                    {% if reminder.priority.value == 'urgent' %}
+                    <span class="status-badge status-urgent">عاجل</span>
+                    {% elif reminder.priority.value == 'high' %}
+                    <span class="status-badge" style="background-color: #fef3c7; color: #d97706;">عالي</span>
+                    {% endif %}
+                </div>
+                <span class="status-badge 
+                    {% if reminder.status.value == 'completed' %}status-completed
+                    {% elif reminder.status.value == 'in_progress' %}status-in-progress
+                    {% elif reminder.status.value == 'pending' %}status-pending
+                    {% endif %}">
+                    {% if reminder.status.value == 'pending' %}معلقة
+                    {% elif reminder.status.value == 'in_progress' %}قيد المعالجة
+                    {% elif reminder.status.value == 'completed' %}مكتملة
+                    {% elif reminder.status.value == 'assigned' %}تم الإسناد
+                    {% elif reminder.status.value == 'waiting' %}قيد الانتظار
+                    {% endif %}
+                </span>
+            </div>
+            <div class="flex gap-2">
+                <a href="/reminders/{{ reminder.id }}/edit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    تعديل
+                </a>
+                <button onclick="deleteReminder()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    حذف
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Description -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">الوصف</h2>
+                <p class="text-gray-700 leading-relaxed">
+                    {{ reminder.description or reminder.description_ar or 'لا يوجد وصف' }}
+                </p>
+            </div>
+
+            <!-- Comments -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">التعليقات ({{ reminder.comments_count or 0 }})</h2>
+                
+                <!-- Add Comment Form -->
+                <div class="mb-6">
+                    <textarea class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" 
+                              rows="3" placeholder="أضف تعليق..."></textarea>
+                    <button class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        إضافة تعليق
+                    </button>
+                </div>
+
+                <!-- Comments List -->
+                <div class="space-y-4">
+                    <div class="text-center py-8 text-gray-500">
+                        لا توجد تعليقات بعد
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Details Card -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">التفاصيل</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">تاريخ الاستحقاق</p>
+                        <p class="font-medium text-gray-900">
+                            {% if reminder.due_date %}
+                                {{ reminder.due_date.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                غير محدد
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">أنشئ بواسطة</p>
+                        <p class="font-medium text-gray-900">
+                            {{ reminder.creator.full_name or reminder.creator.email }}
+                        </p>
+                    </div>
+
+                    {% if reminder.assigned_to_user %}
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">مسند إلى</p>
+                        <p class="font-medium text-gray-900">
+                            {{ reminder.assigned_to_user.full_name or reminder.assigned_to_user.email }}
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {% if reminder.client %}
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">العميل</p>
+                        <a href="/clients/{{ reminder.client_id }}" class="font-medium text-blue-600 hover:text-blue-700">
+                            {{ reminder.client.full_name }}
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">تاريخ الإنشاء</p>
+                        <p class="font-medium text-gray-900">
+                            {{ reminder.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">إجراءات</h2>
+                <div class="space-y-2">
+                    <button class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        تحديد كمكتمل
+                    </button>
+                    <button class="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">
+                        نقل إلى قيد المعالجة
+                    </button>
+                    <button class="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                        تعيين لمستخدم آخر
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteReminder() {
+    if (confirm('هل أنت متأكد من حذف هذا التذكير؟')) {
+        fetch('/api/v1/reminders/{{ reminder.id }}', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('access_token')
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = '/reminders';
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

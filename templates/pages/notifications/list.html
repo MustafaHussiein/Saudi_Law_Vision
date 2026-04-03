@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}الإشعارات{% endblock %}
+{% block content %}
+<div class="space-y-6">
+<h1 class="text-3xl font-bold">الإشعارات والمهام</h1>
+<div class="bg-white rounded-xl shadow-sm">
+{% if notifications %}
+<div class="divide-y">{% for notif in notifications %}
+<div class="p-6 hover:bg-gray-50 {% if not notif.is_read %}bg-blue-50{% endif %}">
+<h3 class="font-semibold">{{ notif.title }}</h3>
+<p class="text-sm text-gray-600 mt-1">{{ notif.message }}</p>
+<p class="text-xs text-gray-500 mt-2">{{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</p></div>{% endfor %}</div>
+{% else %}<div class="text-center py-16"><p class="text-gray-600">لا توجد إشعارات</p></div>{% endif %}</div></div>
+{% endblock %}

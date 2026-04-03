@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}تفاصيل العميل - Riada Law{% endblock %}
+
+{% block content %}
+<div id="loading" class="p-12 text-center">
+    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+</div>
+
+<div id="client-container" class="max-w-5xl mx-auto space-y-6" style="display:none;">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900" id="display-name"></h1>
+            <p class="text-gray-500" id="display-id"></p>
+        </div>
+        <div class="flex gap-3">
+            <a id="edit-btn" href="#" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">تعديل البيانات</a>
+            <button onclick="deleteClient()" class="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition">حذف العميل</button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-8">
+            <section>
+                <h3 class="text-lg font-bold mb-4 border-b pb-2">المعلومات الشخصية</h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div><p class="text-sm text-gray-500">الاسم الكامل (EN)</p><p id="c-name" class="font-medium"></p></div>
+                    <div><p class="text-sm text-gray-500">الاسم الكامل (AR)</p><p id="c-name-ar" class="font-medium"></p></div>
+                    <div><p class="text-sm text-gray-500">البريد الإلكتروني</p><p id="c-email" class="font-medium"></p></div>
+                    <div><p class="text-sm text-gray-500">رقم الهاتف</p><p id="c-phone" class="font-medium"></p></div>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="text-lg font-bold mb-4 border-b pb-2">تفاصيل الهوية والعنوان</h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div><p class="text-sm text-gray-500">رقم الهوية / السجل</p><p id="c-national" class="font-medium"></p></div>
+                    <div><p class="text-sm text-gray-500">العنوان</p><p id="c-address" class="font-medium"></p></div>
+                    <div><p class="text-sm text-gray-500">المدينة</p><p id="c-city" class="font-medium"></p></div>
+                    <div><p class="text-sm text-gray-500">الدولة</p><p id="c-country" class="font-medium"></p></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-fit">
+            <h3 class="text-lg font-bold mb-4 border-b pb-2">بيانات الشركة</h3>
+            <div class="space-y-4">
+                <div><p class="text-sm text-gray-500">اسم الشركة</p><p id="c-company" class="font-medium"></p></div>
+                <div><p class="text-sm text-gray-500">السجل التجاري</p><p id="c-reg" class="font-medium"></p></div>
+            </div>
+            
+            <div class="mt-8 pt-6 border-t">
+                <h3 class="font-bold mb-2">ملاحظات</h3>
+                <p id="c-notes" class="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg italic"></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const clientId = window.location.pathname.split('/').pop();
+
+async function loadClientDetail() {
+    const token = localStorage.getItem('access_token');
+    try {
+        const response = await fetch(`/api/v1/clients/${clientId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error();
+        
+        const c = await response.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('client-container').style.display = 'block';
+
+        // Map data to UI
+        document.getElementById('display-name').textContent = c.full_name_ar || c.full_name;
+        document.getElementById('display-id').textContent = `رقم العميل: #${c.id}`;
+        document.getElementById('c-name').textContent = c.full_name;
+        document.getElementById('c-name-ar').textContent = c.full_name_ar || '-';
+        document.getElementById('c-email').textContent = c.email || '-';
+        document.getElementById('c-phone').textContent = c.phone || '-';
+        document.getElementById('c-national').textContent = c.national_id || '-';
+        document.getElementById('c-address').textContent = c.address || '-';
+        document.getElementById('c-city').textContent = c.city || '-';
+        document.getElementById('c-country').textContent = c.country || '-';
+        document.getElementById('c-company').textContent = c.company_name || 'فردي';
+        document.getElementById('c-reg').textContent = c.company_registration || '-';
+        document.getElementById('c-notes').textContent = c.notes || 'لا توجد ملاحظات';
+        
+        document.getElementById('edit-btn').href = `/clients/${clientId}/edit`;
+
+    } catch (err) {
+        document.getElementById('loading').innerHTML = '<p class="text-red-600 font-bold">عذراً، العميل غير موجود</p>';
+    }
+}
+
+async function deleteClient() {
+    if (!confirm('هل أنت متأكد من حذف هذا العميل نهائياً؟')) return;
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`/api/v1/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) window.location.href = '/clients';
+    else alert('فشل الحذف');
+}
+
+loadClientDetail();
+</script>
+{% endblock %}

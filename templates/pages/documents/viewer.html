@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}عرض المستند - Riada Law{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-2xl font-bold" id="doc-title">جاري التحميل...</h1>
+            <p class="text-sm text-gray-600 mt-1" id="doc-uploader"></p>
+        </div>
+        <div class="flex gap-2">
+            <button id="download-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                تحميل
+            </button>
+            <a href="/documents" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                رجوع
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm p-6" id="viewer-container">
+        <div id="loading" class="text-center py-16">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-4"></div>
+            <p class="text-gray-600">جاري التحميل...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const docId = window.location.pathname.split('/').filter(Boolean).pop();
+let fileBlob = null;
+let fileName = 'document';
+
+async function loadDocument() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+
+    try {
+        // Step 1: Get document metadata
+        console.log('Fetching document metadata for ID:', docId);
+        const metaResponse = await fetch('/api/v1/documents/' + docId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!metaResponse.ok) {
+            const errorText = await metaResponse.text();
+            console.error('Metadata fetch failed:', metaResponse.status, errorText);
+            document.getElementById('loading').innerHTML = 
+                '<p class="text-red-600">خطأ: ' + 
+                (metaResponse.status === 404 ? 'المستند غير موجود' : 
+                 metaResponse.status === 403 ? 'غير مصرح' : 
+                 'فشل التحميل') + '</p>';
+            return;
+        }
+
+        const doc = await metaResponse.json();
+        console.log('Document metadata:', doc);
+        fileName = doc.file_name || 'document';
+        
+        // Update header
+        document.getElementById('doc-title').textContent = doc.title || 'مستند';
+        document.getElementById('doc-uploader').textContent = 
+            'المرفوع بواسطة: ' + (doc.owner_name || 'غير معروف');
+        
+        const ext = (doc.file_extension || '').toLowerCase();
+        console.log('File extension:', ext);
+
+        // Step 2: Fetch the actual file
+        console.log('Fetching file content...');
+        const fileResponse = await fetch('/api/v1/documents/' + docId + '/download', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!fileResponse.ok) {
+            const errorText = await fileResponse.text();
+            console.error('File download failed:', fileResponse.status, errorText);
+            
+            // Show detailed error
+            document.getElementById('loading').innerHTML = 
+                '<div class="text-center">' +
+                    '<svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                    '</svg>' +
+                    '<p class="text-red-600 font-semibold mb-2">فشل تحميل الملف</p>' +
+                    '<p class="text-gray-600 text-sm">الملف غير موجود على الخادم</p>' +
+                    '<p class="text-gray-500 text-xs mt-2">قد يكون الملف محذوفاً أو تالفاً</p>' +
+                '</div>';
+            return;
+        }
+
+        // Get file as blob
+        console.log('Converting to blob...');
+        fileBlob = await fileResponse.blob();
+        console.log('Blob created, size:', fileBlob.size);
+        
+        // Create object URL
+        const objectUrl = URL.createObjectURL(fileBlob);
+        console.log('Object URL created:', objectUrl);
+        
+        // Set up download button
+        document.getElementById('download-btn').onclick = function() {
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = fileName;
+            a.click();
+        };
+
+        // Display based on file type
+        const container = document.getElementById('viewer-container');
+        
+        if (ext === '.pdf') {
+            console.log('Rendering PDF viewer');
+            container.innerHTML = 
+                '<div class="w-full h-[800px] bg-gray-100 rounded border overflow-hidden">' +
+                    '<iframe src="' + objectUrl + '#view=FitH" ' +
+                    'class="w-full h-full" frameborder="0"></iframe>' +
+                '</div>';
+        } else if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(ext)) {
+            console.log('Rendering image viewer');
+            container.innerHTML = 
+                '<div class="flex justify-center">' +
+                    '<img src="' + objectUrl + '" ' +
+                    'class="max-w-full h-auto rounded shadow-lg" alt="' + (doc.title || '') + '" ' +
+                    'onerror="this.parentElement.innerHTML=\'<p class=text-red-600>فشل تحميل الصورة</p>\'">' +
+                '</div>';
+        } else if (['.txt', '.md', '.log'].includes(ext)) {
+            console.log('Rendering text viewer');
+            const text = await fileBlob.text();
+            container.innerHTML = 
+                '<pre class="bg-gray-50 p-4 rounded border overflow-auto max-h-[800px] text-sm">' +
+                escapeHtml(text) + '</pre>';
+        } else {
+            console.log('Rendering download-only view');
+            container.innerHTML = 
+                '<div class="text-center py-16">' +
+                    '<svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>' +
+                    '</svg>' +
+                    '<p class="text-gray-900 font-semibold mb-2">' + (doc.title || fileName) + '</p>' +
+                    '<p class="text-gray-600 mb-4">نوع الملف: ' + ext + '</p>' +
+                    '<button onclick="document.getElementById(\'download-btn\').click()" ' +
+                    'class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">تحميل الملف</button>' +
+                '</div>';
+        }
+        
+        console.log('Document loaded successfully');
+        
+    } catch (error) {
+        console.error('Error loading document:', error);
+        document.getElementById('loading').innerHTML = 
+            '<div class="text-center">' +
+                '<p class="text-red-600 font-semibold mb-2">حدث خطأ أثناء تحميل المستند</p>' +
+                '<p class="text-gray-600 text-sm">' + error.message + '</p>' +
+                '<button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg">إعادة المحاولة</button>' +
+            '</div>';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+loadDocument();
+</script>
+{% endblock %}

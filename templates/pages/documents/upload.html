@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}رفع مستند جديد{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+<h1 class="text-3xl font-bold">رفع مستند جديد</h1>
+<form id="upload-form" class="bg-white rounded-xl shadow-sm p-6 space-y-4" enctype="multipart/form-data">
+<div><label class="block text-sm font-medium mb-2">عنوان المستند *</label>
+<input type="text" name="title" required class="w-full px-4 py-2 border rounded-lg"></div>
+<div><label class="block text-sm font-medium mb-2">نوع المستند</label>
+<select name="document_type" class="w-full px-4 py-2 border rounded-lg">
+<option value="contract">عقد</option><option value="court_filing">صحيفة دعوى</option>
+<option value="evidence">دليل</option><option value="correspondence">مراسلات</option>
+<option value="power_of_attorney">وكالة</option><option value="id_document">وثيقة هوية</option>
+<option value="other">أخرى</option></select></div>
+<div><label class="block text-sm font-medium mb-2">الملف *</label>
+<input type="file" name="file" required accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" 
+class="w-full px-4 py-2 border rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700"></div>
+<div><label class="block text-sm font-medium mb-2">الوصف</label>
+<textarea name="description" rows="4" class="w-full px-4 py-2 border rounded-lg"></textarea></div>
+<div class="grid grid-cols-2 gap-4">
+<div><label class="block text-sm font-medium mb-2">العميل</label>
+<select name="client_id" class="w-full px-4 py-2 border rounded-lg">
+<option value="">اختر عميل (اختياري)</option></select></div>
+<div><label class="block text-sm font-medium mb-2">القضية</label>
+<select name="case_id" class="w-full px-4 py-2 border rounded-lg">
+<option value="">اختر قضية (اختياري)</option></select></div></div>
+<div><label class="flex items-center gap-2">
+<input type="checkbox" name="is_confidential" class="w-4 h-4">
+<span class="text-sm">مستند سري</span></label></div>
+<div class="flex gap-3">
+<button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">رفع المستند</button>
+<a href="/documents" class="px-6 py-2 bg-gray-200 rounded-lg">إلغاء</a></div>
+</form></div>
+<script>
+// Add this to the <script> in your upload.html
+document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target); // Handles file correctly
+    const token = localStorage.getItem('access_token');
+
+    const res = await fetch('/api/v1/documents/upload', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + token
+            // Note: Do NOT set Content-Type header manually for FormData/Files
+        },
+        body: formData
+    });
+
+    if (res.ok) {
+        window.location.href = '/documents';
+    } else {
+        const err = await res.json();
+        alert('فشل الرفع: ' + (err.detail || 'خطأ غير معروف'));
+    }
+});
+</script>
+{% endblock %}

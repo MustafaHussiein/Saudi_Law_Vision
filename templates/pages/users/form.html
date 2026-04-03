@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ 'تعديل' if user_edit else 'إضافة' }} مستخدم{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+<h1 class="text-3xl font-bold">{{ 'تعديل' if user_edit else 'إضافة' }} مستخدم</h1>
+<form id="user-form" class="bg-white rounded-xl shadow-sm p-6 space-y-4">
+<div><label class="block text-sm font-medium mb-2">الاسم الكامل *</label>
+<input type="text" name="full_name" required class="w-full px-4 py-2 border rounded-lg"></div>
+<div><label class="block text-sm font-medium mb-2">البريد الإلكتروني *</label>
+<input type="email" name="email" required class="w-full px-4 py-2 border rounded-lg"></div>
+{% if not user_edit %}
+<div><label class="block text-sm font-medium mb-2">كلمة المرور *</label>
+<input type="password" name="password" required minlength="6" class="w-full px-4 py-2 border rounded-lg"></div>
+{% endif %}
+<div class="grid grid-cols-2 gap-4">
+<div><label class="block text-sm font-medium mb-2">رقم الهاتف</label>
+<input type="tel" name="phone" class="w-full px-4 py-2 border rounded-lg"></div>
+<div><label class="block text-sm font-medium mb-2">الدور</label>
+<select name="role" class="w-full px-4 py-2 border rounded-lg">
+<option value="client">عميل</option><option value="lawyer">محامي</option>
+<option value="staff">موظف</option><option value="admin">مدير</option></select></div></div>
+<div><label class="flex items-center gap-2">
+<input type="checkbox" name="is_active" checked class="w-4 h-4">
+<span class="text-sm">مستخدم نشط</span></label></div>
+<div class="flex gap-3">
+<button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg">حفظ</button>
+<a href="/users" class="px-6 py-2 bg-gray-200 rounded-lg">إلغاء</a></div></form></div>
+<script>
+// Get the User ID from the URL if we are in edit mode
+const pathParts = window.location.pathname.split('/');
+const userId = pathParts[2]; // Assumes /users/{id}/edit
+const isEdit = window.location.pathname.includes('/edit');
+
+// If in Edit Mode, fetch the existing data to fill the form
+if (isEdit) {
+    loadUserData();
+}
+
+async function loadUserData() {
+    const token = localStorage.getItem('access_token');
+    const res = await fetch(`/api/v1/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+        const u = await res.json();
+        document.getElementsByName('full_name')[0].value = u.full_name;
+        document.getElementsByName('email')[0].value = u.email;
+        document.getElementsByName('phone')[0].value = u.phone || '';
+        document.getElementsByName('role')[0].value = u.role;
+        document.getElementsByName('is_active')[0].checked = u.is_active;
+    }
+}
+
+document.getElementById('user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    
+    // Handle the checkbox correctly
+    data.is_active = document.getElementsByName('is_active')[0].checked;
+
+    const token = localStorage.getItem('access_token');
+    
+    // DYNAMIC LOGIC: Choose URL and Method
+    const url = isEdit ? `/api/v1/users/${userId}` : '/api/v1/users';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert(isEdit ? 'تم التحديث بنجاح' : 'تم الإضافة بنجاح');
+            window.location.href = '/users';
+        } else {
+            const errorData = await response.json();
+            console.error("Error details:", errorData);
+            alert('حدث خطأ: ' + (errorData.detail || 'يرجى التحقق من البيانات'));
+        }
+    } catch (error) {
+        console.error("Fetch error:", error);
+        alert('فشل الاتصال بالخادم');
+    }
+});
+</script>
+{% endblock %}

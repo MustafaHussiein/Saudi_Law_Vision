@@ -1,0 +1,27 @@
+best-deal-backend/
+├─ app/
+│  ├─ main.py                # FastAPI entrypoint
+│  ├─ tornado_ws.py          # Tornado websocket server
+│  ├─ core/
+│  │  ├─ config.py           # Config & secrets
+│  │  └─ security.py         # JWT, hashing, auth helpers
+│  ├─ db/
+│  │  ├─ base.py             # SQLAlchemy Base
+│  │  ├─ models.py           # ORM models
+│  │  └─ session.py          # AsyncSession factory
+│  ├─ schemas/
+│  │  └─ pydantic_models.py  # Request/response schemas
+│  ├─ api/
+│  │  ├─ v1/
+│  │  │  ├─ auth.py
+│  │  │  └─ chat.py
+│  ├─ services/
+│  │  ├─ langchain_service.py
+│  │  └─ offer_service.py
+│  └─ utils/
+│     └─ cache.py
+├─ frontend/                  # Static frontend files (HTML, CSS, JS)
+├─ Dockerfile
+├─ docker-compose.yml
+├─ requirements.txt
+└─ README.md

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold">المستندات</h1>
+        <a href="/documents/upload" class="px-4 py-2 bg-blue-600 text-white rounded-lg">+ رفع مستند</a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <table class="w-full text-right">
+            <thead class="bg-gray-50 border-b">
+                <tr>
+                    <th class="p-4">المستند</th>
+                    <th class="p-4">بواسطة</th>
+                    <th class="p-4">التاريخ</th>
+                    <th class="p-4">إجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="docs-list" class="divide-y"></tbody>
+        </table>
+        <div id="loading" class="p-10 text-center text-gray-500">جاري التحميل...</div>
+    </div>
+</div>
+
+<script>
+async function loadDocs() {
+    const res = await fetch('/api/v1/documents', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('access_token') }
+    });
+    const data = await res.json();
+    document.getElementById('loading').remove();
+    const tbody = document.getElementById('docs-list');
+    
+    tbody.innerHTML = data.documents.map(doc => `
+        <tr class="hover:bg-gray-50">
+            <td class="p-4">
+                <div class="font-bold">${doc.title}</div>
+                <div class="text-xs text-gray-400">${doc.file_name}</div>
+            </td>
+            <td class="p-4"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">${doc.owner_name}</span></td>
+            <td class="p-4 text-sm text-gray-500">${new Date(doc.created_at).toLocaleDateString('ar-EG')}</td>
+            <td class="p-4 flex gap-3">
+                <a href="/documents/${doc.id}" class="text-blue-600 font-bold">عرض</a>
+                <a href="/uploads/documents/${doc.file_name}" download class="text-gray-500">تحميل</a>
+            </td>
+        </tr>
+    `).join('');
+}
+loadDocs();
+</script>
+{% endblock %}

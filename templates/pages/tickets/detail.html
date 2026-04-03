@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}تفاصيل التذكرة - Riada Law{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6" id="ticket-container" style="display:none;">
+    <div class="flex justify-between items-start">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900" id="ticket-title"></h1>
+            <p class="text-gray-600 mt-1" id="ticket-number"></p>
+        </div>
+        <a href="/tickets" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+            ← العودة
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="grid grid-cols-2 gap-6">
+            <div>
+                <p class="text-sm text-gray-600">الحالة</p>
+                <p class="font-semibold mt-1" id="ticket-status"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">الأولوية</p>
+                <p class="font-semibold mt-1" id="ticket-priority"></p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <p class="text-sm text-gray-600">الوصف</p>
+            <p class="mt-1 text-gray-900" id="ticket-description"></p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-xl font-bold mb-4">الإجراءات</h2>
+        <div class="flex gap-3">
+            <button onclick="changeStatus('in_progress')" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                تحويل قيد المعالجة
+            </button>
+            <button onclick="changeStatus('resolved')" 
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                تحديد كمحلة
+            </button>
+            <button onclick="closeTicket()" 
+                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                إغلاق
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="loading" class="max-w-5xl mx-auto p-8 text-center">
+    <p>جاري التحميل...</p>
+</div>
+
+<script>
+const ticketId = window.location.pathname.split('/').pop();
+
+async function loadTicket() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/tickets/' + ticketId, {
+            headers: { 
+                'Authorization': 'Bearer ' + token 
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                alert('التذكرة غير موجودة');
+                window.location.href = '/tickets';
+                return;
+            }
+            throw new Error('Failed to load');
+        }
+
+        const ticket = await response.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('ticket-container').style.display = 'block';
+        
+        document.getElementById('ticket-title').textContent = ticket.title;
+        document.getElementById('ticket-number').textContent = '#' + ticket.ticket_number;
+        document.getElementById('ticket-status').textContent = ticket.status.value || ticket.status;
+        document.getElementById('ticket-priority').textContent = ticket.priority;
+        document.getElementById('ticket-description').textContent = ticket.description;
+    } catch (error) {
+        console.error(error);
+        document.getElementById('loading').innerHTML = '<p class="text-red-600">خطأ في التحميل</p>';
+    }
+}
+
+async function changeStatus(newStatus) {
+    const token = localStorage.getItem('access_token');
+    
+    try {
+        const response = await fetch('/api/v1/tickets/' + ticketId, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: newStatus
+            })
+        });
+
+        if (response.ok) {
+            alert('تم التحديث');
+            loadTicket();
+        } else {
+            const error = await response.json();
+            alert(error.detail || 'حدث خطأ');
+            console.error('Error response:', error);
+        }
+    } catch (error) {
+        console.error('Request error:', error);
+        alert('حدث خطأ في الاتصال');
+    }
+}
+
+async function closeTicket() {
+    if (!confirm('إغلاق التذكرة؟')) return;
+    
+    const token = localStorage.getItem('access_token');
+    try {
+        const response = await fetch('/api/v1/tickets/' + ticketId + '/close', {
+            method: 'POST',
+            headers: { 
+                'Authorization': 'Bearer ' + token 
+            }
+        });
+
+        if (response.ok) {
+            alert('تم الإغلاق');
+            loadTicket();
+        }
+    } catch (error) {
+        alert('حدث خطأ');
+    }
+}
+
+loadTicket();
+</script>
+{% endblock %}

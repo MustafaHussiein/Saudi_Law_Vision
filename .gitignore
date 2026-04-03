@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+*.egg-info/
+
+# Data & models (too large for GitHub)
+data/
+*.txt
+*.pdf
+SaudiLawTxt/
+*.gguf
+
+# Qdrant storage
+storage/
+qdrant_db/
+
+# Secrets
+.env
+*.key
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}قائمة العملاء - Riada Law{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">العملاء</h1>
+            <p class="text-gray-600 mt-1">إدارة بيانات العملاء والملفات القانونية</p>
+        </div>
+        <a href="/clients/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-sm">
+            + عميل جديد
+        </a>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <input type="text" id="client-search" onkeyup="filterClients()" placeholder="بحث باسم العميل، البريد، أو رقم الهاتف..." 
+               class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <div id="loading" class="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-100">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-4"></div>
+        <p class="text-gray-500">جاري تحميل قائمة العملاء...</p>
+    </div>
+
+    <div id="clients-container" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" style="display:none;">
+        <div id="clients-list" class="divide-y divide-gray-100">
+            </div>
+    </div>
+</div>
+
+<script>
+async function loadClients() {
+    const token = localStorage.getItem('access_token');
+    try {
+        const response = await fetch('/api/v1/clients', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        const container = document.getElementById('clients-container');
+        const list = document.getElementById('clients-list');
+
+        if (data.clients && data.clients.length > 0) {
+            container.style.display = 'block';
+            list.innerHTML = data.clients.map(client => `
+                <a href="/clients/${client.id}" class="block p-6 hover:bg-gray-50 transition group">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold border border-blue-100">
+                                ${(client.full_name_ar || client.full_name || 'C').charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition">${client.full_name_ar || client.full_name}</h3>
+                                <p class="text-sm text-gray-500">${client.email || 'لا يوجد بريد'} • ${client.phone || 'لا يوجد هاتف'}</p>
+                            </div>
+                        </div>
+                        <div class="text-gray-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+        } else {
+            document.getElementById('loading').innerHTML = '<p class="text-gray-500">لا يوجد عملاء حالياً</p>';
+        }
+    } catch (error) {
+        document.getElementById('loading').innerHTML = '<p class="text-red-500">خطأ في تحميل البيانات</p>';
+    }
+}
+
+function filterClients() {
+    let input = document.getElementById('client-search').value.toLowerCase();
+    let items = document.querySelectorAll('#clients-list a');
+    items.forEach(item => {
+        item.style.display = item.innerText.toLowerCase().includes(input) ? '' : 'none';
+    });
+}
+
+loadClients();
+</script>
+{% endblock %}

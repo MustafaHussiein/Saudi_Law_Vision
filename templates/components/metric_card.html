@@ -1,0 +1,17 @@
+<!-- Metric Card Component -->
+<div class="metric-card bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition">
+<div class="flex items-center justify-between">
+<div class="flex-1">
+<p class="text-sm font-medium text-gray-600 mb-1">{{ title }}</p>
+<p class="text-3xl font-bold text-gray-900">{{ value }}</p>
+{% if change %}
+<p class="text-sm mt-2 {% if change > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+{{ '+' if change > 0 else '' }}{{ change }}%
+</p>
+{% endif %}
+</div>
+<div class="w-12 h-12 rounded-full flex items-center justify-center {{ icon_bg_class or 'bg-blue-100' }}">
+{{ icon | safe }}
+</div>
+</div>
+</div>

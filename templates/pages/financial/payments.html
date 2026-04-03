@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}المدفوعات{% endblock %}
+{% block content %}
+<div class="space-y-6">
+<div class="flex justify-between"><h1 class="text-3xl font-bold">المدفوعات</h1>
+<button class="px-4 py-2 bg-blue-600 text-white rounded-lg">+ تسجيل دفعة</button></div>
+<div class="bg-white rounded-xl shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full">
+<thead class="bg-gray-50 border-b">
+<tr><th class="px-6 py-3 text-right text-sm font-semibold">رقم الدفعة</th>
+<th class="px-6 py-3 text-right text-sm font-semibold">الفاتورة</th>
+<th class="px-6 py-3 text-right text-sm font-semibold">المبلغ</th>
+<th class="px-6 py-3 text-right text-sm font-semibold">طريقة الدفع</th>
+<th class="px-6 py-3 text-right text-sm font-semibold">التاريخ</th></tr>
+</thead>
+<tbody><tr><td colspan="5" class="px-6 py-16 text-center text-gray-500">لا توجد مدفوعات</td></tr>
+</tbody></table></div></div></div>
+{% endblock %}

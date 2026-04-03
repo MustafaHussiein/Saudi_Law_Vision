@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}إدارة المستخدمين{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">إدارة المستخدمين</h1>
+        <a href="/users/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg">+ مستخدم جديد</a>
+    </div>
+
+    <div id="loading" class="bg-white rounded-xl shadow-sm p-12 text-center">
+        <p class="text-gray-500">جاري التحميل...</p>
+    </div>
+
+    <div id="users-container" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden" style="display:none;">
+        <div id="users-list" class="divide-y divide-gray-100"></div>
+    </div>
+
+    <div id="empty-state" class="bg-white rounded-xl shadow-sm p-12 text-center" style="display:none;">
+        <p class="text-gray-500">لا يوجد مستخدمون</p>
+    </div>
+</div>
+
+<script>
+async function loadUsers() {
+    const token = localStorage.getItem('access_token');
+    
+    try {
+        const response = await fetch('/api/v1/users', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 403) {
+                document.getElementById('loading').innerHTML = 
+                    '<p class="text-red-600">غير مصرح - فقط المسؤول</p>';
+                return;
+            }
+            throw new Error('Failed to load');
+        }
+        
+        const data = await response.json();
+        
+        // Filter out clients - only show staff (admin, lawyer, employee)
+        const staffUsers = data.users.filter(u => {
+            const role = (u.role || '').toLowerCase();
+            return role !== 'client';
+        });
+        
+        document.getElementById('loading').style.display = 'none';
+        
+        if (staffUsers.length === 0) {
+            document.getElementById('empty-state').style.display = 'block';
+            return;
+        }
+        
+        document.getElementById('users-container').style.display = 'block';
+        const list = document.getElementById('users-list');
+        
+        list.innerHTML = staffUsers.map(u => {
+            const displayName = u.full_name_ar || u.full_name || u.email;
+            const initial = displayName.charAt(0).toUpperCase();
+            const roleText = getRoleText(u.role);
+            
+            return `
+                <a href="/users/${u.id}" class="block p-6 hover:bg-gray-50 transition">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                ${initial}
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">${displayName}</h3>
+                                <p class="text-sm text-gray-500">${u.email} • ${roleText}</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            ${u.is_active ? 'نشط' : 'معطل'}
+                        </span>
+                    </div>
+                </a>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').innerHTML = 
+            '<p class="text-red-600">خطأ في التحميل</p>';
+    }
+}
+
+function getRoleText(role) {
+    const roleMap = {
+        'admin': 'مسؤول',
+        'lawyer': 'محامي',
+        'employee': 'موظف',
+        'client': 'عميل'
+    };
+    return roleMap[role.toLowerCase()] || role;
+}
+
+loadUsers();
+</script>
+{% endblock %}

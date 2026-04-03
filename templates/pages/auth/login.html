@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - Riada Law</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-blue-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-blue-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <span class="text-white text-3xl font-bold">R</span>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900">Riada Law</h1>
+            <p class="text-gray-600 mt-2">Legal Tech Platform</p>
+        </div>
+        
+        <!-- Error message -->
+        <div id="error-message" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            <p id="error-text"></p>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">البريد الإلكتروني</label>
+                <input 
+                    type="email" 
+                    name="username" 
+                    id="username"
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="admin@legaltech.com"
+                >
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">كلمة المرور</label>
+                <input 
+                    type="password" 
+                    name="password" 
+                    id="password"
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="••••••••"
+                >
+            </div>
+            
+            <div class="flex items-center justify-between">
+                <label class="flex items-center">
+                    <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span class="mr-2 text-sm text-gray-600">تذكرني</span>
+                </label>
+                <a href="#" class="text-sm text-blue-600 hover:text-blue-700">نسيت كلمة المرور؟</a>
+            </div>
+            
+            <button 
+                type="submit"
+                id="login-button"
+                class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200"
+            >
+                تسجيل الدخول
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600">
+                ليس لديك حساب؟
+                <a href="/register" class="text-blue-600 hover:text-blue-700 font-semibold">إنشاء حساب جديد</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Handle form submission
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            const button = document.getElementById('login-button');
+            
+            // Hide error message
+            errorDiv.classList.add('hidden');
+            
+            // Disable button and show loading
+            button.disabled = true;
+            button.textContent = 'جاري تسجيل الدخول...';
+            
+            // Get form data
+            const formData = new FormData();
+            formData.append('username', document.getElementById('username').value);
+            formData.append('password', document.getElementById('password').value);
+            
+            try {
+                // Send login request
+                const response = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Login successful - store token and redirect
+                    localStorage.setItem('access_token', data.access_token);
+                    
+                    // Show success message
+                    button.textContent = '✓ تم تسجيل الدخول';
+                    button.classList.remove('bg-blue-600');
+                    button.classList.add('bg-green-600');
+                    
+                    // Redirect to dashboard
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 500);
+                } else {
+                    // Login failed - show error
+                    errorText.textContent = data.detail || 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+                    errorDiv.classList.remove('hidden');
+                    
+                    // Re-enable button
+                    button.disabled = false;
+                    button.textContent = 'تسجيل الدخول';
+                }
+            } catch (error) {
+                // Network error
+                errorText.textContent = 'حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.';
+                errorDiv.classList.remove('hidden');
+                
+                // Re-enable button
+                button.disabled = false;
+                button.textContent = 'تسجيل الدخول';
+            }
+        });
+        
+        // Pre-fill default credentials for testing (remove in production)
+        document.getElementById('username').value = 'admin@legaltech.com';
+        document.getElementById('password').value = 'admin123';
+    </script>
+</body>
+</html>

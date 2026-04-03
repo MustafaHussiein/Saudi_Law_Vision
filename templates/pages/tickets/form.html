@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}تذكرة جديدة - Riada Law{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">تذكرة جديدة</h1>
+        <a href="/tickets" class="text-gray-600 hover:text-gray-900">
+            ← العودة للقائمة
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <form id="ticket-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">العنوان *</label>
+                <input type="text" id="title" required
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                       placeholder="أدخل عنوان التذكرة">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">الوصف *</label>
+                <textarea id="description" rows="4" required
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="أدخل وصف التذكرة"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">النوع</label>
+                    <select id="ticket_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="support">دعم فني</option>
+                        <option value="request">طلب</option>
+                        <option value="complaint">شكوى</option>
+                        <option value="inquiry">استفسار</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">الأولوية</label>
+                    <select id="priority" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="low">منخفضة</option>
+                        <option value="normal" selected>عادية</option>
+                        <option value="high">عالية</option>
+                        <option value="urgent">عاجل</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    إنشاء التذكرة
+                </button>
+                <a href="/tickets" 
+                   class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                    إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('ticket-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('يرجى تسجيل الدخول أولاً');
+        window.location.href = '/login';
+        return;
+    }
+
+    const data = {
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        ticket_type: document.getElementById('ticket_type').value,
+        priority: document.getElementById('priority').value
+    };
+
+    try {
+        const response = await fetch('/api/v1/tickets', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert('تم إنشاء التذكرة بنجاح');
+            window.location.href = '/tickets';
+        } else {
+            const error = await response.json();
+            alert(error.detail || 'حدث خطأ');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('حدث خطأ في الاتصال');
+    }
+});
+</script>
+{% endblock %}

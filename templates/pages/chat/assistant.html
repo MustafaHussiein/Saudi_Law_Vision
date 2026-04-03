@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}المساعد الذكي - Riada Law{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-900">المساعد الذكي للأنظمة السعودية</h1>
+        <p class="text-gray-600 mt-2">اسأل عن أي نظام أو قانون سعودي</p>
+        <p class="text-sm text-gray-500 mt-1">83 نظام متاح للاستشارة</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <div id="chat-messages" class="space-y-4 mb-4 h-[500px] overflow-y-auto border border-gray-100 rounded-lg p-4 bg-gray-50">
+            <div class="text-center text-gray-500 py-8">
+                <svg class="mx-auto h-12 w-12 text-blue-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                </svg>
+                <p>ابدأ المحادثة بطرح سؤال</p>
+            </div>
+        </div>
+        
+        <div class="flex gap-3">
+            <input type="text" id="user-message" 
+                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                   placeholder="مثال: ما هي عقوبة الرشوة في النظام السعودي؟"
+                   onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" id="send-btn"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400">
+                إرسال
+            </button>
+        </div>
+        
+        <div class="mt-3 flex gap-2 flex-wrap">
+            <button onclick="askExample('ما هي عقوبة الرشوة؟')" class="text-xs px-3 py-1 bg-gray-100 rounded-full hover:bg-gray-200">
+                عقوبة الرشوة
+            </button>
+            <button onclick="askExample('ما هو نظام المرور؟')" class="text-xs px-3 py-1 bg-gray-100 rounded-full hover:bg-gray-200">
+                نظام المرور
+            </button>
+            <button onclick="askExample('ما هي شروط الجنسية السعودية؟')" class="text-xs px-3 py-1 bg-gray-100 rounded-full hover:bg-gray-200">
+                الجنسية السعودية
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let isProcessing = false;
+
+function askExample(question) {
+    document.getElementById('user-message').value = question;
+    sendMessage();
+}
+
+async function sendMessage() {
+    if (isProcessing) return;
+    
+    const input = document.getElementById('user-message');
+    const message = input.value.trim();
+    const token = localStorage.getItem('access_token');
+    const sendBtn = document.getElementById('send-btn');
+    
+    if (!message) return;
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Disable input during processing
+    isProcessing = true;
+    input.disabled = true;
+    sendBtn.disabled = true;
+    
+    // Add user message
+    addMessage(message, 'user');
+    input.value = '';
+    
+    // Add loading indicator
+    const loadingId = 'loading-' + Date.now();
+    addMessage('🔍 جاري البحث في الأنظمة السعودية...', 'assistant', loadingId, true);
+
+    try {
+        const response = await fetch(`/api/v1/llm/chat?query=${encodeURIComponent(message)}`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+        
+        // Remove loading indicator
+        const loadingEl = document.getElementById(loadingId);
+        if (loadingEl) loadingEl.remove();
+
+        if (response.ok) {
+            // Format answer with sources
+            let answerHtml = '<div class="space-y-2">';
+            answerHtml += '<div class="text-sm leading-relaxed">' + escapeHtml(data.answer) + '</div>';
+            
+            // Add sources if available
+            if (data.sources && data.sources.length > 0) {
+                answerHtml += '<div class="border-t border-blue-200 pt-2 mt-3">';
+                answerHtml += '<div class="text-xs font-semibold text-blue-700 mb-1">📚 المصادر:</div>';
+                data.sources.forEach(source => {
+                    answerHtml += `<div class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded mt-1">📄 ${escapeHtml(source)}</div>`;
+                });
+                answerHtml += '</div>';
+            }
+            answerHtml += '</div>';
+            
+            addMessage(answerHtml, 'assistant', null, false, true);
+        } else {
+            addMessage('❌ عذراً، حدث خطأ: ' + (data.detail || 'غير معروف'), 'assistant');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        const loadingEl = document.getElementById(loadingId);
+        if (loadingEl) loadingEl.remove();
+        addMessage('❌ تعذر الاتصال بالخادم. تأكد من تشغيل Ollama.', 'assistant');
+    } finally {
+        // Re-enable input
+        isProcessing = false;
+        input.disabled = false;
+        sendBtn.disabled = false;
+        input.focus();
+    }
+}
+
+function addMessage(text, sender, id = null, isLoading = false, isHtml = false) {
+    const container = document.getElementById('chat-messages');
+    const isUser = sender === 'user';
+    
+    // Remove welcome message on first message
+    const welcome = container.querySelector('.text-center.text-gray-500');
+    if (welcome) welcome.remove();
+    
+    const messageDiv = document.createElement('div');
+    if (id) messageDiv.id = id;
+    messageDiv.className = 'flex ' + (isUser ? 'justify-end' : 'justify-start') + ' animate-fade-in';
+    
+    const bgColor = isUser ? 'bg-blue-600 text-white' : 
+                    isLoading ? 'bg-gray-200 text-gray-700' : 
+                    'bg-white text-gray-900 border border-gray-200';
+    
+    const content = isHtml ? text : escapeHtml(text);
+    
+    messageDiv.innerHTML = `
+        <div class="max-w-[85%] px-4 py-3 rounded-2xl shadow-sm ${bgColor} ${
+            isUser ? 'rounded-br-none' : 'rounded-bl-none'
+        }">
+            ${isLoading ? '<div class="flex items-center gap-2"><div class="animate-pulse">●●●</div></div>' : content}
+        </div>
+    `;
+    
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+
+<style>
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+}
+</style>
+{% endblock %}
