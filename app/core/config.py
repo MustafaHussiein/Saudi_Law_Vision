@@ -3,19 +3,15 @@ Application Configuration
 File: app/core/config.py
 
 All settings come from environment variables or .env file
-CONNECTION STRING → DATABASE_URL
 """
 
-import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """
     Application settings.
-    Values are loaded from environment variables or .env file.
-
     Priority: Environment variable > .env file > default value
     """
 
@@ -27,48 +23,59 @@ class Settings(BaseSettings):
     # ── Server ────────────────────────────────────────────────────────────────
     HOST: str = "0.0.0.0"
     PORT: int = 5050
-    DEBUG: bool = True                      # Set False in production
+    DEBUG: bool = True
 
-    # ── *** DATABASE CONNECTION STRING *** ────────────────────────────────────
-    # Default: SQLite file in project root (no setup needed!)
-    # Change this in your .env file for PostgreSQL/MySQL
+    # ── Database ──────────────────────────────────────────────────────────────
     DATABASE_URL: str = "sqlite:///./legal_tech.db"
-    #
-    # PostgreSQL example:
-    # DATABASE_URL=postgresql://postgres:mypassword@localhost:5432/legaltech
-    #
-    # MySQL example:
-    # DATABASE_URL=mysql+pymysql://root:mypassword@localhost:3306/legaltech
 
     # ── API ───────────────────────────────────────────────────────────────────
     API_V1_STR: str = "/api/v1"
 
     # ── Security / JWT ────────────────────────────────────────────────────────
-    # CHANGE THIS IN PRODUCTION! Generate with: openssl rand -hex 32
     SECRET_KEY: str = "your-super-secret-key-change-in-production-please"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7   # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
     # ── File Uploads ──────────────────────────────────────────────────────────
     UPLOAD_DIR: str = "uploads"
-    MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024           # 50 MB
+    MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024
 
-    # ── Email (optional, leave blank to disable) ──────────────────────────────
+    # ── Email ─────────────────────────────────────────────────────────────────
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None
     SMTP_PASSWORD: Optional[str] = None
     EMAIL_FROM: Optional[str] = None
 
-    # ── AI/LLM (optional) ─────────────────────────────────────────────────────
-    ANTHROPIC_API_KEY: Optional[str] = None
-    LLM_MODEL: str = "claude-sonnet-4-5-20250929"
+    # ════════════════════════════════════════════════════════════════════════
+    # 🔥 AI / LLM SETTINGS (FIXED)
+    # ════════════════════════════════════════════════════════════════════════
 
-    class Config:
-        # Looks for .env file in project root
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # Provider selection
+    LLM_PROVIDER: str = "gemini"   # ollama | gemini | openai | claude
+
+    # API Keys
+    GEMINI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+
+    # Models
+    GEMINI_MODEL: str = "models/gemini-2.5-flash"
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
+
+    # Qdrant
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+
+    # ════════════════════════════════════════════════════════════════════════
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",   # 🔥 prevents crash if extra env vars exist
+    )
 
 
 # ─── Singleton ────────────────────────────────────────────────────────────────
