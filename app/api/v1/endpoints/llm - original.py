@@ -35,8 +35,6 @@ logger = logging.getLogger("app.api.v1.endpoints.llm")
 # ══════════════════════════════════════════════════════════════════════════════
 
 COLLECTION_NAME   = "saudi_law_data"
-QDRANT_URL     = os.getenv("QDRANT_URL")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_HOST       = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT       = int(os.getenv("QDRANT_PORT", "6333"))
 PRIMARY_EMBED     = os.getenv("PRIMARY_EMBED", "Omartificial-Intelligence-Space/Arabic-Triplet-Matryoshka-V2")
@@ -284,10 +282,6 @@ class _Engine:
         self._lock            = threading.Lock()
 
 _engine = _Engine()
-_engine.qdrant = (
-    QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-    if QDRANT_URL else QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-)
 
 def _load_engine_task():
     try:
@@ -297,7 +291,7 @@ def _load_engine_task():
         logger.info("Loading reranker on CPU…")
         _engine.reranker    = CrossEncoder(RERANKER_MODEL, device="cpu")
 
-        p = os.getenv("LLM_PROVIDER", "gemini").lower().strip()
+        p = os.getenv("LLM_PROVIDER", "ollama").lower().strip()
         _engine.llm_backend      = _build_backend(p)
         _engine.current_provider = p
 
@@ -349,7 +343,7 @@ async def chat(
 
     # ── Hot-swap provider ──────────────────────────────────────────────────
     load_dotenv(override=True)
-    live_p = os.getenv("LLM_PROVIDER", "gemini").lower().strip()
+    live_p = os.getenv("LLM_PROVIDER", "ollama").lower().strip()
     if _engine.current_provider != live_p:
         with _engine._lock:
             if _engine.llm_backend:
@@ -405,9 +399,16 @@ async def chat(
     history_ctx = build_history_context(history)
 
     # ── Smart routing ──────────────────────────────────────────────────────
-    route     = classify_query(query)
-    backend   = _engine.llm_backend
-    routed_to = live_p
+    route = classify_query(query)
+
+    if route == "fallback" and live_p != "ollama":
+        # Use whatever the configured provider is (e.g. Gemini)
+        backend    = _engine.llm_backend
+        routed_to  = live_p
+    else:
+        # Always fall back to Ollama for local/sensitive queries
+        backend    = _engine.llm_backend if live_p == "ollama" else _OllamaBackend()
+        routed_to  = "local"
 
     # ── Generate ───────────────────────────────────────────────────────────
     answer = sanitize_arabic(backend.invoke(query, ctx, history_ctx).strip())
