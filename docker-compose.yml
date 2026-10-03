@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    container_name: legal_tech_app
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./legal_tech.db:/app/legal_tech.db
+      - ./uploads:/app/uploads
+      - ./outputImgs:/app/outputImgs
+      - ./static/uploads:/app/static/uploads
+      - hf_cache:/home/appuser/.cache/huggingface   # ← new
+      - ./logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - QDRANT_HOST=qdrant
+    depends_on:
+      qdrant:
+        condition: service_started
+        required: false
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: legal_tech_qdrant
+    profiles: ["rag"]
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:
+  hf_cache:   # ← new
