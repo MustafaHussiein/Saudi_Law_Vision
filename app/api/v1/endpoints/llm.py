@@ -6,7 +6,7 @@ Optimizations applied:
   2. Prompt Compression       — lean system prompt injected per-request
   3. Semantic Cache           — vector similarity ≥ 0.85 → skip the model entirely
   4. Smart Router             — lightweight classifier decides local vs fallback
-  5. Memory stability         — Embedding/Reranker on CPU, Ollama on GPU
+  5. Memory stability         — Embedding/Reranker on CPU
   6. Hot-swap provider        — live .env reload between requests
 """
 
@@ -284,10 +284,25 @@ class _Engine:
         self._lock            = threading.Lock()
 
 _engine = _Engine()
-_engine.qdrant = (
-    QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-    if QDRANT_URL else QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
-)
+
+
+def _make_qdrant() -> QdrantClient:
+    """Qdrant Cloud when QDRANT_URL is set, otherwise a local Qdrant server."""
+    if QDRANT_URL:
+        logger.info(f"Qdrant: cloud → {QDRANT_URL}")
+        return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY, timeout=30)
+    logger.info(f"Qdrant: local → {QDRANT_HOST}:{QDRANT_PORT}")
+    return QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+
+
+def _qdrant_search(vec: list, limit: int = 5):
+    """Works with old (search) and new (query_points) qdrant-client versions."""
+    client = _engine.qdrant
+    if hasattr(client, "query_points"):
+        return client.query_points(
+            collection_name=COLLECTION_NAME, query=vec, limit=limit, with_payload=True
+        ).points
+    return client.search(collection_name=COLLECTION_NAME, query_vector=vec, limit=limit)
 
 def _load_engine_task():
     try:
@@ -301,7 +316,7 @@ def _load_engine_task():
         _engine.llm_backend      = _build_backend(p)
         _engine.current_provider = p
 
-        _engine.qdrant   = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+        _engine.qdrant   = _make_qdrant()
         _engine.is_ready = True
         logger.info(f"🟢 Legal Engine Ready | Provider: {p.upper()}")
     except Exception:
@@ -333,12 +348,15 @@ class ChatResponse(BaseModel):
 router = APIRouter(tags=["AI"])
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(
+def chat(
     req: Optional[ChatRequest] = None,
     query: Optional[str] = Query(default=None),
 ):
     if not _engine.is_ready:
-        raise HTTPException(status_code=503, detail="Loading engine…")
+        raise HTTPException(
+            status_code=503,
+            detail=("Engine failed: " + _engine.error[-600:]) if _engine.error else "Loading engine…",
+        )
 
     # Support both ?query=... (original frontend) and {"query":...} JSON body
     resolved = (req.query if req and req.query else None) or query or ""
@@ -379,11 +397,11 @@ async def chat(
         )
 
     # ── Qdrant search ──────────────────────────────────────────────────────
-    hits = _engine.qdrant.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=q_vec.tolist(),
-        limit=5,
-    )
+    try:
+        hits = _qdrant_search(q_vec.tolist(), limit=5)
+    except Exception as e:
+        logger.error(f"Qdrant search failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Vector search failed: {e}")
     if not hits:
         return ChatResponse(
             answer="لا توجد نتائج قانونية ذات صلة.",
@@ -410,7 +428,12 @@ async def chat(
     routed_to = live_p
 
     # ── Generate ───────────────────────────────────────────────────────────
-    answer = sanitize_arabic(backend.invoke(query, ctx, history_ctx).strip())
+    try:
+        raw_answer = backend.invoke(query, ctx, history_ctx)
+    except Exception as e:
+        logger.error(f"LLM call failed ({live_p}): {e}")
+        raise HTTPException(status_code=502, detail=f"LLM error ({live_p}): {e}")
+    answer = sanitize_arabic(raw_answer.strip())
 
     # ── Cache store ────────────────────────────────────────────────────────
     sources_list = [
