@@ -8,6 +8,7 @@ venv/
 
 # Data & models (too large for GitHub)
 data/
+qudrant
 *.txt
 *.pdf
 SaudiLawTxt/
